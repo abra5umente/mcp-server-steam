@@ -23,14 +23,12 @@ public class SteamGames {
   }
 
   public GetOwnedGames getOwnedGames(String steamId) throws SteamApiException {
-    validateSteamId(steamId);
     GetOwnedGamesRequest request =
         SteamWebApiRequestFactory.createGetOwnedGamesRequest(steamId, true, true, List.of());
     return client.processRequest(request);
   }
 
   public GetRecentlyPlayedGames getRecentlyPlayedGames(String steamId) throws SteamApiException {
-    validateSteamId(steamId);
     GetRecentlyPlayedGamesRequest request =
         SteamWebApiRequestFactory.createGetRecentlyPlayedGamesRequest(steamId);
 
@@ -38,7 +36,6 @@ public class SteamGames {
   }
 
   public List<Game> getGames(String steamId) throws SteamApiException {
-    validateSteamId(steamId);
     GetOwnedGames ownedGames = getOwnedGames(steamId);
 
     if (ownedGames == null
@@ -53,7 +50,6 @@ public class SteamGames {
   }
 
   public List<Game> getRecentGames(String steamId) throws SteamApiException {
-    validateSteamId(steamId);
     GetRecentlyPlayedGames recentGames = getRecentlyPlayedGames(steamId);
 
     if (recentGames == null
@@ -71,16 +67,5 @@ public class SteamGames {
                     game.getPlaytimeForever(),
                     game.getPlaytime2weeks()))
         .collect(Collectors.toList());
-  }
-
-  private void validateSteamId(String steamId) {
-    if (steamId == null || steamId.isBlank()) {
-      throw new IllegalArgumentException("Steam ID cannot be null or blank");
-    }
-    // Basic format validation - Steam IDs are typically 17-digit numbers
-    if (!steamId.matches("\\d{1,17}")) {
-      throw new IllegalArgumentException(
-          "Invalid Steam ID format. Steam IDs should be numeric and up to 17 digits.");
-    }
   }
 }

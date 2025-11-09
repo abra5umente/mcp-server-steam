@@ -164,7 +164,7 @@
         <version>1.6.5</version>
         <configuration>
           <name>mcp-server-steam</name>
-          <appVersion>1.0.0</appVersion>
+          <appVersion>${project.version}</appVersion>
           <vendor>Experimental Works</vendor>
           <destination>target/dist</destination>
           <type>APP_IMAGE</type>

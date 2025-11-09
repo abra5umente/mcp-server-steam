@@ -51,6 +51,9 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           mvn versions:set -DnewVersion=$VERSION
 
+      - name: Check code formatting
+        run: mvn spotless:check
+
       - name: Run tests
         run: mvn test
 
