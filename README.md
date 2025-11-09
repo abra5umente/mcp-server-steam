@@ -1,57 +1,64 @@
 # MCP Steam Server
 
-A Model Context Protocol (MCP) server that provides Steam gaming context to AI assistants. This service integrates with the Steam API to fetch user gaming information and exposes it through the MCP protocol, allowing AI assistants to access and understand users' gaming activities and preferences.
+A Model Context Protocol (MCP) server that connects AI assistants to the Steam gaming platform, enabling them to access and understand your Steam gaming library and activity.
 
-## Installation
+## What It Does
 
-### Option 1: Native Executable (Recommended)
+This MCP server provides AI assistants (like Claude) with access to Steam user gaming data through two simple tools. When integrated with an AI assistant, it allows the assistant to answer questions about your gaming habits, recommend games based on your library, analyze your playtime patterns, and provide personalized gaming insights.
+
+### Available Tools
+
+The server exposes two MCP tools that query the Steam Web API:
+
+**`get-games`**
+- Retrieves all games owned by a Steam user
+- Returns game names, App IDs, and total playtime (in minutes)
+- Useful for: Library analysis, game recommendations, collection statistics
+
+**`get-recent-games`**
+- Retrieves games played in the last 2 weeks
+- Returns game names, App IDs, total playtime, and recent playtime (in minutes)
+- Useful for: Activity tracking, current gaming interests, time management insights
+
+Both tools can optionally use a custom prefix (configured via `TOOL_PREFIX` environment variable).
+
+### Example Use Cases
+
+Once configured with your AI assistant, you can ask questions like:
+- "What games have I been playing recently?"
+- "How many hours have I spent in [game name]?"
+- "Recommend a game from my library I haven't played much"
+- "What's my most-played game?"
+- "Which games in my library have I never launched?"
+
+## How to Use It
+
+### Prerequisites
+
+To use this MCP server, you need:
+- A Steam account and Steam API key ([get one here](https://steamcommunity.com/dev/apikey))
+- Your Steam ID ([find yours here](https://steamid.io/))
+- An MCP-compatible AI assistant (like [Claude Desktop](https://claude.ai/download))
+
+### Installation Options
+
+#### Option 1: Native Executable (Recommended)
 
 The easiest way to run - no Java installation required:
 
 1. Download the native application bundle for your platform from the [Releases](https://github.com/dsp/mcp-steam/releases) page
-2. Extract the archive - it includes an embedded Java runtime
-3. Set environment variables:
-   ```bash
-   # Linux/macOS:
-   export STEAM_API_KEY=your_steam_api_key
-   export STEAM_ID=your_steam_id
+2. Extract the archive (includes an embedded Java runtime)
+3. Configure your AI assistant to use the executable (see Claude Desktop setup below)
 
-   # Windows:
-   set STEAM_API_KEY=your_steam_api_key
-   set STEAM_ID=your_steam_id
-   ```
-4. Run the executable:
-   ```bash
-   # Linux/macOS:
-   ./mcp-server-steam/bin/mcp-server-steam
+#### Option 2: Using JAR
 
-   # Windows:
-   mcp-server-steam\bin\mcp-server-steam.exe
-   ```
-
-### Option 2: Using JAR (Cross-platform)
-
-If you have Java 21+ installed:
+If you have Java 21+ installed, you can download and run the JAR directly:
 
 ```bash
-# Download the JAR from releases
 java -jar mcp-steam-1.0-SNAPSHOT.jar
 ```
 
-**Required environment variables:**
-```bash
-# Linux/macOS:
-export STEAM_API_KEY=your_steam_api_key
-export STEAM_ID=your_steam_id
-export TOOL_PREFIX=steam_  # Optional
-
-# Windows:
-set STEAM_API_KEY=your_steam_api_key
-set STEAM_ID=your_steam_id
-set TOOL_PREFIX=steam_
-```
-
-### Option 3: Using Docker
+#### Option 3: Using Docker
 
 For containerized deployments:
 
@@ -66,28 +73,26 @@ docker run --rm -i \
 
 The server requires these environment variables:
 
-- **STEAM_API_KEY** (required) - Your Steam Web API key from [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)
-- **STEAM_ID** (required) - Steam user ID to query (numeric, up to 17 digits)
-- **TOOL_PREFIX** (optional) - Prefix for MCP tool names (default: empty string)
+- **`STEAM_API_KEY`** (required) - Your Steam Web API key
+- **`STEAM_ID`** (required) - Steam user ID to query (numeric, up to 17 digits)
+- **`TOOL_PREFIX`** (optional) - Prefix for MCP tool names (default: empty string)
 
-## Setting Up with Claude Desktop
-
-To use this MCP server with Claude Desktop:
+### Setting Up with Claude Desktop
 
 1. **Get your Steam credentials:**
    - Steam API Key: [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)
-   - Steam ID: Find yours at [steamid.io](https://steamid.io/)
+   - Steam ID: [steamid.io](https://steamid.io/)
 
 2. **Locate your Claude Desktop config file:**
    - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
    - **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
    - **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
-   Or open via: Claude → Settings → Developer → Edit Config
+   Or: Claude → Settings → Developer → Edit Config
 
 3. **Add the MCP server configuration:**
 
-   > **⚠️ Security Warning**: Your `claude_desktop_config.json` file will contain your Steam API key. Never commit this file to version control or share it publicly. Consider using environment-specific configuration files and add `claude_desktop_config.json` to your `.gitignore` if you're working in a repository.
+   > **⚠️ Security Warning**: Your config file will contain your Steam API key. Never commit this file to version control or share it publicly.
 
    **For Native Executable (Recommended):**
    ```json
@@ -104,7 +109,7 @@ To use this MCP server with Claude Desktop:
    }
    ```
 
-   **For JAR (if you have Java installed):**
+   **For JAR:**
    ```json
    {
      "mcpServers": {
@@ -120,10 +125,7 @@ To use this MCP server with Claude Desktop:
    }
    ```
 
-   **Windows Path Example (note the escaped backslashes):**
-   ```json
-   "command": "C:\\\\Users\\\\YourName\\\\Downloads\\\\mcp-server-steam\\\\bin\\\\mcp-server-steam.exe"
-   ```
+   **Windows Note:** Escape backslashes in paths: `C:\\\\Users\\\\...`
 
 4. **Restart Claude Desktop**
 
@@ -131,69 +133,61 @@ To use this MCP server with Claude Desktop:
    - Look for the 🔌 icon in Claude Desktop
    - Click it to see available MCP tools
    - You should see `get-games` and `get-recent-games`
-
-### Available MCP Tools
-
-Once configured, Claude can access these tools:
-
-- **get-games** - Retrieve all owned games with total playtime
-- **get-recent-games** - Retrieve games played in the last 2 weeks
+   - Try asking Claude: "What games have I been playing recently?"
 
 ## Development
 
 ### Prerequisites
 
-- OpenJDK 21
-- Docker (for container builds)
-- Git
-- [devenv.sh](https://devenv.sh)
+- Java 21+ JDK
+- Maven 3.6+
 
-### Setting Up Development Environment
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/dsp/mcp-steam.git
-   cd mcp-steam
-   ```
-
-2. Use the development shell:
-   ```bash
-   devshell shell
-   ```
-   This will set up the required development environment with all necessary dependencies.
-
-3. Build the project:
-   ```bash
-   mvn package
-   ```
-
-### Building Native Executable
-
-To create a native application bundle with embedded JRE:
+### Quick Start
 
 ```bash
-# Requires Java 21+ JDK with jpackage tool
+git clone https://github.com/dsp/mcp-steam.git
+cd mcp-steam
+mvn package
+```
+
+Run locally:
+```bash
+export STEAM_API_KEY=your_key
+export STEAM_ID=your_id
+java -jar target/mcp-steam-1.0-SNAPSHOT.jar
+```
+
+Build native executable:
+```bash
 mvn package jpackage:jpackage
-
-# Output will be in:
-# target/dist/mcp-server-steam/bin/mcp-server-steam (executable)
-# target/dist/mcp-server-steam/lib/ (bundled JRE and libraries)
 ```
 
-### Building Docker Image Locally
+### Tech Stack
 
-```bash
-docker build -t mcp-server-steam .
-```
+- Java 21 with Project Reactor for async operations
+- MCP SDK 0.7.0 for protocol implementation
+- Steam Web API client by lukaspradel
+- Maven for builds, JUnit 5 + Mockito for testing
 
-## API Documentation
-
-The server implements the Model Context Protocol (MCP) specification. For detailed API documentation, please refer to the [MCP Documentation](https://modelcontextprotocol.io).
+For detailed development guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a PR.
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Ensure all tests pass (`mvn test`)
+5. Apply code formatting (`mvn spotless:apply`)
+6. Submit a Pull Request
+
+## Resources
+
+- [Model Context Protocol Documentation](https://modelcontextprotocol.io)
+- [Steam Web API Documentation](https://steamcommunity.com/dev)
+- [MCP Servers Repository](https://github.com/modelcontextprotocol/servers)
 
 ## License
 
-MIT License
+MIT License - see [LICENSE](LICENSE) file for details.
