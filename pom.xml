@@ -174,10 +174,7 @@
           <javaOptions>
             <option>-Dfile.encoding=UTF-8</option>
           </javaOptions>
-          <winMenu>true</winMenu>
-          <winDirChooser>true</winDirChooser>
-          <winShortcut>true</winShortcut>
-          <winPerUserInstall>true</winPerUserInstall>
+          <!-- Windows installer options removed - only valid for MSI/EXE types, not APP_IMAGE -->
         </configuration>
       </plugin>
     </plugins>
