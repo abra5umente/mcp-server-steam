@@ -63,10 +63,11 @@ public class SteamApiConfig {
   }
 
   private static void validateSteamId(String steamId) {
-    // Basic format validation - Steam IDs are typically 17-digit numbers
-    if (!steamId.matches("\\d{1,17}")) {
+    // Steam accepts both SteamID64 (numeric) and custom vanity URLs (alphanumeric)
+    // Just ensure it's not unreasonably long (Steam custom URLs are max 32 chars)
+    if (steamId.length() > 32) {
       throw new IllegalArgumentException(
-          "Invalid Steam ID format. Steam IDs should be numeric and up to 17 digits.");
+          "Invalid Steam ID format. Steam IDs should be at most 32 characters.");
     }
   }
 

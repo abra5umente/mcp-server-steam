@@ -55,36 +55,28 @@ class SteamApiConfigTest {
   }
 
   @Test
-  void testConfigWithInvalidSteamIdFormat() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new SteamApiConfig("test-api-key", "invalid-id", ""));
-    assertEquals(
-        "Invalid Steam ID format. Steam IDs should be numeric and up to 17 digits.",
-        exception.getMessage());
+  void testConfigWithNumericSteamId() {
+    // SteamID64 format (17 digits) should work
+    SteamApiConfig config = new SteamApiConfig("test-api-key", "76561198012345678", "");
+    assertEquals("76561198012345678", config.getSteamId());
+  }
+
+  @Test
+  void testConfigWithVanityUrlSteamId() {
+    // Custom vanity URL format should work
+    SteamApiConfig config = new SteamApiConfig("test-api-key", "my_custom_url", "");
+    assertEquals("my_custom_url", config.getSteamId());
   }
 
   @Test
   void testConfigWithTooLongSteamId() {
-    // 18 digits - exceeds maximum of 17
+    // 33+ characters exceeds Steam's maximum for custom URLs
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
-            () -> new SteamApiConfig("test-api-key", "123456789012345678", ""));
+            () -> new SteamApiConfig("test-api-key", "a".repeat(33), ""));
     assertEquals(
-        "Invalid Steam ID format. Steam IDs should be numeric and up to 17 digits.",
-        exception.getMessage());
-  }
-
-  @Test
-  void testConfigWithAlphanumericSteamId() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new SteamApiConfig("test-api-key", "abc123def456", ""));
-    assertEquals(
-        "Invalid Steam ID format. Steam IDs should be numeric and up to 17 digits.",
+        "Invalid Steam ID format. Steam IDs should be at most 32 characters.",
         exception.getMessage());
   }
 }
