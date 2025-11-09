@@ -6,6 +6,8 @@ import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import com.lukaspradel.steamapi.core.exception.SteamApiException;
+
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -15,21 +17,18 @@ import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import io.modelcontextprotocol.spec.ServerMcpTransport;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class SteamGamesServer {
 
-  private static final String STEAM_API_KEY = System.getenv("STEAM_API_KEY");
-  private static final String STEAM_ID = System.getenv("STEAM_ID");
-  private static final String TOOL_PREFIX = SteamGamesServer.getenvOrDefault("TOOL_PREFIX", "");
-
   private final McpAsyncServer server;
+  private final SteamGames steamGames;
+  private final SteamApiConfig config;
 
-  private static String getenvOrDefault(String key, String defaultValue) {
-    String value = System.getenv(key);
-    return value != null ? value : defaultValue;
-  }
+  public SteamGamesServer(ServerMcpTransport transport, SteamApiConfig config) {
+    this.config = config;
+    this.steamGames = new SteamGames(config.getSteamApiKey());
 
-  public SteamGamesServer(ServerMcpTransport transport) {
     String version = getClass().getPackage().getImplementationVersion();
     if (version == null) {
       version = "1.0.0"; // Fallback version if not found
@@ -48,7 +47,7 @@ public class SteamGamesServer {
         .then(Mono.never());
   }
 
-  private static McpServerFeatures.AsyncToolRegistration createGetGamesTool() {
+  private McpServerFeatures.AsyncToolRegistration createGetGamesTool() {
     var schema =
         """
             {
@@ -59,7 +58,7 @@ public class SteamGamesServer {
 
     var tool =
         new Tool(
-            TOOL_PREFIX + "get-games",
+            config.getToolPrefix() + "get-games",
             """
             Get a comprehensive list of all games owned by the specified Steam user, including their total playtime in minutes.
             This includes all games in their Steam library, both installed and uninstalled, free and purchased. For each game,
@@ -69,26 +68,50 @@ public class SteamGamesServer {
             """,
             schema);
 
-    return new McpServerFeatures.AsyncToolRegistration(tool, args -> handleGetGames(args));
+    return new McpServerFeatures.AsyncToolRegistration(tool, this::handleGetGames);
   }
 
-  private static Mono<CallToolResult> handleGetGames(Map<String, Object> args) {
+  private Mono<CallToolResult> handleGetGames(Map<String, Object> args) {
     return Mono.fromCallable(
-        () -> {
-          var steamGames = new SteamGames(STEAM_API_KEY);
-          var games = steamGames.getGames(STEAM_ID);
+            () -> {
+              List<Game> games = steamGames.getGames(config.getSteamId());
 
-          var json =
-              new JSONObject()
-                  .put("owner", STEAM_ID)
-                  .put("description", "Played games by the given steam id")
-                  .put("all_games", new JSONArray(games));
+              var json =
+                  new JSONObject()
+                      .put("owner", config.getSteamId())
+                      .put("description", "Played games by the given steam id")
+                      .put("all_games", new JSONArray(games));
 
-          return new CallToolResult(List.of(new TextContent(json.toString())), false);
-        });
+              return new CallToolResult(List.of(new TextContent(json.toString())), false);
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .onErrorResume(
+            SteamApiException.class,
+            e ->
+                Mono.just(
+                    new CallToolResult(
+                        List.of(
+                            new TextContent(
+                                new JSONObject()
+                                    .put("error", "Failed to retrieve games from Steam API")
+                                    .put("message", e.getMessage())
+                                    .toString())),
+                        true)))
+        .onErrorResume(
+            Exception.class,
+            e ->
+                Mono.just(
+                    new CallToolResult(
+                        List.of(
+                            new TextContent(
+                                new JSONObject()
+                                    .put("error", "Unexpected error occurred")
+                                    .put("message", e.getMessage())
+                                    .toString())),
+                        true)));
   }
 
-  private static McpServerFeatures.AsyncToolRegistration createGetRecentGamesTool() {
+  private McpServerFeatures.AsyncToolRegistration createGetRecentGamesTool() {
     var schema =
         """
             {
@@ -99,7 +122,7 @@ public class SteamGamesServer {
 
     var tool =
         new Tool(
-            TOOL_PREFIX + "get-recent-games",
+            config.getToolPrefix() + "get-recent-games",
             """
             Retrieve a list of recently played games for the specified Steam user, including playtime
             details from the last 2 weeks. This tool fetches data directly from Steam's API using the
@@ -110,22 +133,46 @@ public class SteamGamesServer {
             """,
             schema);
 
-    return new McpServerFeatures.AsyncToolRegistration(tool, args -> handleGetRecentGames(args));
+    return new McpServerFeatures.AsyncToolRegistration(tool, this::handleGetRecentGames);
   }
 
-  private static Mono<CallToolResult> handleGetRecentGames(Map<String, Object> args) {
+  private Mono<CallToolResult> handleGetRecentGames(Map<String, Object> args) {
     return Mono.fromCallable(
-        () -> {
-          var steamGames = new SteamGames(STEAM_API_KEY);
-          var games = steamGames.getRecentlyGames(STEAM_ID);
+            () -> {
+              List<Game> games = steamGames.getRecentGames(config.getSteamId());
 
-          var json =
-              new JSONObject()
-                  .put("owner", STEAM_ID)
-                  .put("description", "Recently played games by the given steam id")
-                  .put("recent_games", new JSONArray(games));
+              var json =
+                  new JSONObject()
+                      .put("owner", config.getSteamId())
+                      .put("description", "Recently played games by the given steam id")
+                      .put("recent_games", new JSONArray(games));
 
-          return new CallToolResult(List.of(new TextContent(json.toString())), false);
-        });
+              return new CallToolResult(List.of(new TextContent(json.toString())), false);
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .onErrorResume(
+            SteamApiException.class,
+            e ->
+                Mono.just(
+                    new CallToolResult(
+                        List.of(
+                            new TextContent(
+                                new JSONObject()
+                                    .put("error", "Failed to retrieve recent games from Steam API")
+                                    .put("message", e.getMessage())
+                                    .toString())),
+                        true)))
+        .onErrorResume(
+            Exception.class,
+            e ->
+                Mono.just(
+                    new CallToolResult(
+                        List.of(
+                            new TextContent(
+                                new JSONObject()
+                                    .put("error", "Unexpected error occurred")
+                                    .put("message", e.getMessage())
+                                    .toString())),
+                        true)));
   }
 }

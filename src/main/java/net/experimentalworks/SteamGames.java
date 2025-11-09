@@ -16,6 +16,9 @@ public class SteamGames {
   private final SteamWebApiClient client;
 
   public SteamGames(String apiKey) {
+    if (apiKey == null || apiKey.isBlank()) {
+      throw new IllegalArgumentException("API key cannot be null or blank");
+    }
     this.client = new SteamWebApiClient.SteamWebApiClientBuilder(apiKey).build();
   }
 
@@ -34,13 +37,27 @@ public class SteamGames {
 
   public List<Game> getGames(String steamId) throws SteamApiException {
     GetOwnedGames ownedGames = getOwnedGames(steamId);
+
+    if (ownedGames == null
+        || ownedGames.getResponse() == null
+        || ownedGames.getResponse().getGames() == null) {
+      return List.of();
+    }
+
     return ownedGames.getResponse().getGames().stream()
         .map(game -> new Game(game.getAppid(), game.getName(), game.getPlaytimeForever()))
         .collect(Collectors.toList());
   }
 
-  public List<Game> getRecentlyGames(String steamId) throws SteamApiException {
+  public List<Game> getRecentGames(String steamId) throws SteamApiException {
     GetRecentlyPlayedGames recentGames = getRecentlyPlayedGames(steamId);
+
+    if (recentGames == null
+        || recentGames.getResponse() == null
+        || recentGames.getResponse().getGames() == null) {
+      return List.of();
+    }
+
     return recentGames.getResponse().getGames().stream()
         .map(
             game ->

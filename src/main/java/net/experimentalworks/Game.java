@@ -5,6 +5,8 @@ import java.util.Optional;
 
 public class Game implements Serializable {
 
+  private static final long serialVersionUID = 1L;
+
   private long appId;
   private String name;
   private float playtimeForever;
@@ -14,6 +16,7 @@ public class Game implements Serializable {
     this.appId = appId;
     this.name = name;
     this.playtimeForever = playtimeForever;
+    this.playtime2weeks = Optional.empty();
   }
 
   public Game(long appId, String name, float playtimeForever, float playtime2weeks) {
