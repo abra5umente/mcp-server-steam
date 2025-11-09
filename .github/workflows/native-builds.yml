@@ -45,10 +45,12 @@ jobs:
       - name: Set version
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" == "release" ]; then
+          if [ "${{ github.event_name }}" == "release" ] || [ "${{ github.event_name }}" == "push" ]; then
+            # Extract version from tag (e.g., v1.0.0 -> 1.0.0)
             VERSION=${GITHUB_REF#refs/tags/}
             VERSION=${VERSION#v}
           else
+            # workflow_dispatch - use input or default
             VERSION="${{ github.event.inputs.version }}"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
