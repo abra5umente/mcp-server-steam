@@ -4,7 +4,7 @@
 
 ### What You'll Need
 
-- **Java 21+** -
+- **Java 21+**
 - **Maven 3.6+** - For building and managing dependencies
 - **Git** - Obviously
 - **Docker** - Only if you're working on container stuff
