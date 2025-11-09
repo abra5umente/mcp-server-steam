@@ -65,11 +65,19 @@ jobs:
       - name: Build with Maven
         run: mvn clean package jpackage:jpackage
 
+      - name: List dist contents (debug)
+        run: ls -la target/dist/
+
       - name: Create archive (Linux/macOS)
         if: matrix.os != 'windows-latest'
         working-directory: target/dist
         run: |
-          tar -czf ${{ matrix.artifact_name }}.tar.gz mcp-server-steam
+          # macOS creates .app bundles, Linux creates directories
+          if [ -d "mcp-server-steam.app" ]; then
+            tar -czf ${{ matrix.artifact_name }}.tar.gz mcp-server-steam.app
+          else
+            tar -czf ${{ matrix.artifact_name }}.tar.gz mcp-server-steam
+          fi
 
       - name: Create archive (Windows)
         if: matrix.os == 'windows-latest'
