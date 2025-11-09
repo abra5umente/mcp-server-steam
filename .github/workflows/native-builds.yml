@@ -65,8 +65,14 @@ jobs:
       - name: Build with Maven
         run: mvn clean package jpackage:jpackage
 
-      - name: List dist contents (debug)
+      - name: List dist contents (debug - Unix)
+        if: matrix.os != 'windows-latest'
         run: ls -la target/dist/
+
+      - name: List dist contents (debug - Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: Get-ChildItem -Path target/dist/ -Force
 
       - name: Create archive (Linux/macOS)
         if: matrix.os != 'windows-latest'
