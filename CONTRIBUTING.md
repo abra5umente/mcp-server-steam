@@ -63,7 +63,7 @@ Before you do anything, make sure tests pass:
 mvn test
 ```
 
-All 20 tests should pass.
+All tests should pass.
 
 ### Code Formatting
 
