@@ -8,7 +8,7 @@
   <name>mcp-steam</name>
   <url>http://maven.apache.org</url>
   <properties>
-    <maven.compiler.release>19</maven.compiler.release>
+    <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spotless.version>2.44.2</spotless.version>
   </properties>
@@ -150,7 +150,7 @@
                 <resource>
                   <directory>${project.build.directory}</directory>
                   <includes>
-                    <include>mcp-steam-1.0-SNAPSHOT.jar</include>
+                    <include>${project.artifactId}-${project.version}.jar</include>
                   </includes>
                 </resource>
               </resources>
@@ -169,7 +169,7 @@
           <destination>target/dist</destination>
           <type>APP_IMAGE</type>
           <input>target/jpackage-input</input>
-          <mainJar>mcp-steam-1.0-SNAPSHOT.jar</mainJar>
+          <mainJar>${project.artifactId}-${project.version}.jar</mainJar>
           <mainClass>net.experimentalworks.App</mainClass>
           <javaOptions>
             <option>-Dfile.encoding=UTF-8</option>

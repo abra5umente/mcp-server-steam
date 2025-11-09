@@ -51,6 +51,9 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           mvn versions:set -DnewVersion=$VERSION
 
+      - name: Run tests
+        run: mvn test
+
       - name: Build with Maven
         run: mvn clean package jpackage:jpackage
 

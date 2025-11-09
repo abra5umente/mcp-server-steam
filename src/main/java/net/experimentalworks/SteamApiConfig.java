@@ -14,10 +14,13 @@ public class SteamApiConfig {
    * Creates a new SteamApiConfig by loading values from environment variables.
    *
    * @throws IllegalStateException if required environment variables are missing
+   * @throws IllegalArgumentException if Steam ID format is invalid
    */
   public SteamApiConfig() {
     this.steamApiKey = getRequiredEnv("STEAM_API_KEY");
-    this.steamId = getRequiredEnv("STEAM_ID");
+    String id = getRequiredEnv("STEAM_ID");
+    validateSteamId(id);
+    this.steamId = id;
     this.toolPrefix = getEnvOrDefault("TOOL_PREFIX", "");
   }
 
@@ -27,6 +30,7 @@ public class SteamApiConfig {
    * @param steamApiKey the Steam API key
    * @param steamId the Steam user ID
    * @param toolPrefix the prefix for tool names
+   * @throws IllegalArgumentException if parameters are invalid
    */
   public SteamApiConfig(String steamApiKey, String steamId, String toolPrefix) {
     if (steamApiKey == null || steamApiKey.isBlank()) {
@@ -35,6 +39,7 @@ public class SteamApiConfig {
     if (steamId == null || steamId.isBlank()) {
       throw new IllegalArgumentException("steamId cannot be null or blank");
     }
+    validateSteamId(steamId);
     this.steamApiKey = steamApiKey;
     this.steamId = steamId;
     this.toolPrefix = toolPrefix != null ? toolPrefix : "";
@@ -55,6 +60,14 @@ public class SteamApiConfig {
   private static String getEnvOrDefault(String key, String defaultValue) {
     String value = System.getenv(key);
     return value != null ? value : defaultValue;
+  }
+
+  private static void validateSteamId(String steamId) {
+    // Basic format validation - Steam IDs are typically 17-digit numbers
+    if (!steamId.matches("\\d{1,17}")) {
+      throw new IllegalArgumentException(
+          "Invalid Steam ID format. Steam IDs should be numeric and up to 17 digits.");
+    }
   }
 
   public String getSteamApiKey() {

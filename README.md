@@ -31,7 +31,7 @@ The easiest way to run - no Java installation required:
 
 ### Option 2: Using JAR (Cross-platform)
 
-If you have Java 19+ installed:
+If you have Java 21+ installed:
 
 ```bash
 # Download the JAR from releases
@@ -87,6 +87,8 @@ To use this MCP server with Claude Desktop:
 
 3. **Add the MCP server configuration:**
 
+   > **⚠️ Security Warning**: Your `claude_desktop_config.json` file will contain your Steam API key. Never commit this file to version control or share it publicly. Consider using environment-specific configuration files and add `claude_desktop_config.json` to your `.gitignore` if you're working in a repository.
+
    **For Native Executable (Recommended):**
    ```json
    {
@@ -118,9 +120,9 @@ To use this MCP server with Claude Desktop:
    }
    ```
 
-   **Windows Path Example:**
+   **Windows Path Example (note the escaped backslashes):**
    ```json
-   "command": "C:\\Users\\YourName\\Downloads\\mcp-server-steam\\bin\\mcp-server-steam.exe"
+   "command": "C:\\\\Users\\\\YourName\\\\Downloads\\\\mcp-server-steam\\\\bin\\\\mcp-server-steam.exe"
    ```
 
 4. **Restart Claude Desktop**
@@ -170,7 +172,7 @@ Once configured, Claude can access these tools:
 To create a native application bundle with embedded JRE:
 
 ```bash
-# Requires Java 19+ JDK with jpackage tool
+# Requires Java 21+ JDK with jpackage tool
 mvn package jpackage:jpackage
 
 # Output will be in:

@@ -139,7 +139,7 @@ public class SteamGamesServer {
   private Mono<CallToolResult> handleGetRecentGames(Map<String, Object> args) {
     return Mono.fromCallable(
             () -> {
-              List<Game> games = steamGames.getRecentlyGames(config.getSteamId());
+              List<Game> games = steamGames.getRecentGames(config.getSteamId());
 
               var json =
                   new JSONObject()

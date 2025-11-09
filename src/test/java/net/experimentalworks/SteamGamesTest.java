@@ -74,7 +74,7 @@ class SteamGamesTest {
     SteamGames steamGames = new SteamGames("test-api-key");
 
     IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> steamGames.getRecentlyGames("abc123"));
+        assertThrows(IllegalArgumentException.class, () -> steamGames.getRecentGames("abc123"));
     assertTrue(exception.getMessage().contains("Invalid Steam ID format"));
   }
 }

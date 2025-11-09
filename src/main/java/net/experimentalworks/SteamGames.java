@@ -52,7 +52,7 @@ public class SteamGames {
         .collect(Collectors.toList());
   }
 
-  public List<Game> getRecentlyGames(String steamId) throws SteamApiException {
+  public List<Game> getRecentGames(String steamId) throws SteamApiException {
     validateSteamId(steamId);
     GetRecentlyPlayedGames recentGames = getRecentlyPlayedGames(steamId);
 

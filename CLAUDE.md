@@ -129,7 +129,7 @@ target\dist\mcp-server-steam\bin\mcp-server-steam.exe
 ```
 
 **Notes:**
-- Native packaging requires Java 19+ JDK with jpackage tool
+- Native packaging requires Java 21+ JDK with jpackage tool
 - Creates self-contained application with embedded JRE - end users don't need Java installed
 - Works on Linux, macOS, and Windows (build on target platform)
 - Uses jpackage-maven-plugin (org.panteleyev:jpackage-maven-plugin:1.6.5)
@@ -191,7 +191,7 @@ The application validates these on startup and exits with error code 1 if requir
 ### Build
 - Version is read from JAR manifest; defaults to "1.0.0" if unavailable
 - Maven Shade plugin creates uber-jar with main class `net.experimentalworks.App`
-- Java compiler target is Java 19 (pom.xml:11)
+- Java compiler target is Java 21 (pom.xml:11)
 - Maven Surefire plugin (3.5.2) configured for JUnit 5 support
 
 ## Code Style

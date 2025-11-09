@@ -25,6 +25,7 @@ replay_pid*
 
 # Devenv and Maven
 target/
+dependency-reduced-pom.xml
 
 *.swp
 .devenv.flake.nix
