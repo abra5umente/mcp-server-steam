@@ -29,3 +29,8 @@ target/
 *.swp
 .devenv.flake.nix
 .devenv/
+.env
+
+# IDE
+.vscode/
+.idea/
