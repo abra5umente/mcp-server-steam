@@ -125,7 +125,7 @@ The server requires these environment variables:
    }
    ```
 
-   **Windows Note:** Escape backslashes in paths: `C:\\\\Users\\\\...`
+   **Windows Note:** Escape backslashes in paths: `C:\\Users\\...`
 
 4. **Restart Claude Desktop**
 
