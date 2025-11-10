@@ -4,11 +4,25 @@ A Model Context Protocol (MCP) server that connects AI assistants to the Steam g
 
 ## What It Does
 
-This MCP server provides AI assistants (like Claude) with access to Steam user gaming data through two simple tools. When integrated with an AI assistant, it allows the assistant to answer questions about your gaming habits, recommend games based on your library, analyze your playtime patterns, and provide personalized gaming insights.
+This MCP server provides AI assistants (like Claude) with comprehensive access to Steam gaming data through four powerful tools. When integrated with an AI assistant, it allows the assistant to search for games, fetch detailed store information, analyze your gaming library and activity, and provide personalized gaming insights.
 
 ### Available Tools
 
-The server exposes two MCP tools that query the Steam Web API:
+The server exposes four MCP tools:
+
+**`search-apps`**
+- Search for Steam games by name using fuzzy matching
+- Handles typos, partial names, and variations automatically
+- Returns top matching games with app IDs and similarity scores
+- Perfect for: Finding app IDs when you only know the game name
+- Uses cached Steam app list (~240k apps) for fast searches
+
+**`get-store-details`**
+- Fetch comprehensive store information for any Steam game
+- Returns pricing, descriptions, screenshots, videos, system requirements, reviews, and more
+- Supports region-specific pricing and localized content
+- Perfect for: Getting detailed game information, comparing prices, checking platform support
+- No Steam API key required (uses public Steam Store API)
 
 **`get-games`**
 - Retrieves all games owned by a Steam user
@@ -20,16 +34,19 @@ The server exposes two MCP tools that query the Steam Web API:
 - Returns game names, App IDs, total playtime, and recent playtime (in minutes)
 - Useful for: Activity tracking, current gaming interests, time management insights
 
-Both tools can optionally use a custom prefix (configured via `TOOL_PREFIX` environment variable).
+All tools can optionally use a custom prefix (configured via `TOOL_PREFIX` environment variable).
 
 ### Example Use Cases
 
 Once configured with your AI assistant, you can ask questions like:
-- "What games have I been playing recently?"
-- "How many hours have I spent in [game name]?"
-- "Recommend a game from my library I haven't played much"
-- "What's my most-played game?"
-- "Which games in my library have I never launched?"
+- "Find the app ID for Stardew Valley" (uses `search-apps`)
+- "What's the price and rating for Baldur's Gate 3?" (uses `search-apps` + `get-store-details`)
+- "Show me system requirements for Cyberpunk 2077" (uses `search-apps` + `get-store-details`)
+- "What games have I been playing recently?" (uses `get-recent-games`)
+- "How many hours have I spent in Counter-Strike?" (uses `get-games`)
+- "Recommend a game from my library I haven't played much" (uses `get-games`)
+- "What's my most-played game?" (uses `get-games`)
+- "Compare the specs needed for Elden Ring vs Dark Souls 3" (uses `search-apps` + `get-store-details`)
 
 ## How to Use It
 
@@ -132,8 +149,8 @@ The server requires these environment variables:
 5. **Verify it's working:**
    - Look for the 🔌 icon in Claude Desktop
    - Click it to see available MCP tools
-   - You should see `get-games` and `get-recent-games`
-   - Try asking Claude: "What games have I been playing recently?"
+   - You should see `search-apps`, `get-store-details`, `get-games`, and `get-recent-games`
+   - Try asking Claude: "Find the app ID for Team Fortress 2" or "What games have I been playing recently?"
 
 ## Development
 
@@ -166,7 +183,9 @@ mvn package jpackage:jpackage
 
 - Java 21 with Project Reactor for async operations
 - MCP SDK 0.7.0 for protocol implementation
-- Steam Web API client by lukaspradel
+- Steam Web API client by lukaspradel for game library data
+- Java 21 HttpClient for Steam Store API integration
+- Apache Commons Text for fuzzy search matching
 - Maven for builds, JUnit 5 + Mockito for testing
 
 For detailed development guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).

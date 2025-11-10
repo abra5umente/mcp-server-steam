@@ -23,9 +23,9 @@ This is a Model Context Protocol (MCP) server implementation in Java that expose
    - Can be instantiated with explicit values for testing
 
 3. **SteamGamesServer.java** - MCP server implementation that:
-   - Registers two MCP tools: `get-games` and `get-recent-games`
+   - Registers four MCP tools: `get-games`, `get-recent-games`, `get-store-details`, and `search-apps`
    - Handles tool invocations asynchronously using Project Reactor (Mono)
-   - Uses dependency injection for `SteamGames` and `SteamApiConfig`
+   - Uses dependency injection for `SteamGames`, `SteamStoreClient`, `SteamAppSearch`, and `SteamApiConfig`
    - Implements proper error handling with user-friendly error messages
    - Uses `subscribeOn(Schedulers.boundedElastic())` for blocking Steam API calls
    - Returns errors as `CallToolResult` with isError flag set
@@ -37,12 +37,49 @@ This is a Model Context Protocol (MCP) server implementation in Java that expose
    - Includes Steam ID format validation (numeric, up to 17 digits)
    - Provides null-safe handling of Steam API responses
    - Returns empty lists for null/invalid responses instead of throwing NPE
+   - Supports GetAppList API endpoint for retrieving all Steam apps
 
 5. **Game.java** - Immutable data model for game information:
    - Contains appId, name, playtime (forever)
    - Optional playtime2weeks for recently played games
    - Properly initializes Optional.empty() to avoid null
    - Includes serialVersionUID for safe serialization
+
+6. **SteamStoreClient.java** - HTTP client for Steam Store API:
+   - Uses Java 21's built-in `HttpClient` for async HTTP requests
+   - Fetches detailed store information from public Steam Store API
+   - Does NOT require Steam API key (public endpoint)
+   - Supports multiple app IDs with parallel requests
+   - Supports optional country code and language parameters
+   - Returns `Mono<List<StoreDetails>>` for reactive integration
+   - Handles rate limiting (200 requests per 5 minutes)
+   - Provides comprehensive error handling and recovery
+
+7. **StoreDetails.java** - Immutable data model for complete store information:
+   - Contains all Steam Store API response fields
+   - Nested classes for structured data (PriceOverview, Screenshot, Movie, etc.)
+   - Includes pricing, descriptions, media, categories, genres
+   - Platform support, system requirements, metacritic, achievements
+   - Implements serialization and JSON conversion
+   - Uses Optional for nullable fields to avoid NPE
+
+8. **SteamAppSearch.java** - App search service with fuzzy matching:
+   - Lazy-loads complete Steam app list (~240k apps) on first request
+   - In-memory cache with configurable TTL (default: 1 day)
+   - Uses Levenshtein distance for fuzzy string matching
+   - Returns top N matches sorted by similarity score
+   - Thread-safe cache updates
+   - Handles exact matches, substring matches, and fuzzy matches
+   - Depends on Apache Commons Text for similarity algorithms
+
+9. **AppSearchResult.java** - Immutable data model for search results:
+   - Contains app ID, name, and similarity score
+   - Implements serialization and JSON conversion
+   - Similarity score range: 0.0 to 1.0 (higher is better)
+
+10. **AppInfo.java** - Simple record for app ID and name:
+   - Used for storing cached app list data
+   - Minimal memory footprint
 
 ### Key Dependencies
 
@@ -51,6 +88,7 @@ This is a Model Context Protocol (MCP) server implementation in Java that expose
 - **Project Reactor** (3.7.3) - Reactive programming for async operations
 - **steam-web-api** (1.9.1) - Steam API client by lukaspradel
 - **org.json** (20250107) - JSON serialization
+- **Apache Commons Text** (1.12.0) - String similarity algorithms for fuzzy matching
 
 **Testing:**
 - **JUnit Jupiter** (5.11.3) - Modern unit testing framework
@@ -70,6 +108,39 @@ Both tools return playtime in **minutes** (not hours):
    - Returns games played in last 2 weeks
    - Uses `GetRecentlyPlayedGamesRequest` from Steam API
    - Returns JSON with `owner`, `description`, and `recent_games` array
+
+3. **get-store-details** (or `{TOOL_PREFIX}get-store-details`)
+   - Returns comprehensive store information for one or more Steam applications
+   - Uses public Steam Store API (https://store.steampowered.com/api/appdetails)
+   - Does NOT require Steam API key authentication
+   - Accepts parameters:
+     - `appIds` (required): array of Steam app IDs
+     - `countryCode` (optional): ISO 3166-1 country code for region-specific pricing (e.g., "US", "GB", "DE")
+     - `language` (optional): language code for localized descriptions (e.g., "en", "es", "fr")
+   - Returns complete store details including:
+     - Basic info: name, type, required age, free-to-play status
+     - Pricing: currency, price, discounts (region-specific if countryCode provided)
+     - Descriptions: detailed, short, about the game (localized if language provided)
+     - Media: header image, screenshots, video trailers
+     - Categorization: categories, genres, developers, publishers
+     - Platform support: Windows, Mac, Linux availability
+     - System requirements: minimum and recommended specs per platform
+     - Additional: metacritic score, recommendations, achievements, DLC list, release date, website
+   - Rate limited: 200 requests per 5 minutes (enforced by Steam)
+   - Returns JSON with `description`, `total_apps`, and `store_details` array
+
+4. **search-apps** (or `{TOOL_PREFIX}search-apps`)
+   - Searches for Steam applications by name using fuzzy matching
+   - Helps find app IDs when you know the game name but not the app ID
+   - Uses cached app list (~240k apps) loaded from ISteamApps/GetAppList endpoint
+   - Accepts parameters:
+     - `gameName` (required): game name to search for (supports partial names, typos)
+     - `limit` (optional): maximum number of results to return (default: 5, max: 20)
+   - Uses Levenshtein distance for fuzzy matching
+   - Returns top matches sorted by similarity score (1.0 = perfect match)
+   - Caching: Lazy-loaded on first request, refreshed daily
+   - Use before `get-store-details` when you need to look up app IDs by name
+   - Returns JSON with `query`, `total_results`, and `results` array (app_id, name, score)
 
 ## Development Commands
 
