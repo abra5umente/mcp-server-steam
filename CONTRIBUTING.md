@@ -37,14 +37,21 @@ Here's where everything lives:
 src/main/java/net/experimentalworks/
 ├── App.java                    # Entry point - sets up the server
 ├── SteamApiConfig.java         # Handles env vars and validation
-├── SteamGamesServer.java       # The actual MCP server
+├── SteamGamesServer.java       # The actual MCP server (registers all tools)
 ├── SteamGames.java             # Wraps the Steam API client
-└── Game.java                   # Simple data model for games
+├── SteamStoreClient.java       # HTTP client for Steam Store API
+├── SteamAppSearch.java         # App search service with fuzzy matching
+├── Game.java                   # Data model for owned games
+├── StoreDetails.java           # Data model for store information
+├── AppSearchResult.java        # Data model for search results
+└── AppInfo.java                # Simple record for app ID and name
 
 src/test/java/net/experimentalworks/
 ├── SteamApiConfigTest.java     # Config validation tests
 ├── SteamGamesTest.java         # Steam API wrapper tests
 ├── SteamGamesServerTest.java   # MCP server tests
+├── SteamStoreClientTest.java   # Store API client tests
+├── SteamAppSearchTest.java     # App search tests
 └── GameTest.java               # Model tests
 ```
 
@@ -53,6 +60,8 @@ src/test/java/net/experimentalworks/
 - **MCP SDK 0.7.0** - For implementing the Model Context Protocol
 - **Project Reactor** - Makes async operations less painful
 - **steam-web-api** (by lukaspradel) - Does the heavy lifting for Steam API calls
+- **Java 21 HttpClient** - For Steam Store API HTTP requests
+- **Apache Commons Text** - For fuzzy string matching in app search
 - **JUnit 5 + Mockito** - Testing framework
 
 ### Running Tests

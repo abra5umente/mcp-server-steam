@@ -26,12 +26,14 @@ public class SteamGamesServer {
   private final McpAsyncServer server;
   private final SteamGames steamGames;
   private final SteamStoreClient steamStoreClient;
+  private final SteamAppSearch steamAppSearch;
   private final SteamApiConfig config;
 
   public SteamGamesServer(ServerMcpTransport transport, SteamApiConfig config) {
     this.config = config;
     this.steamGames = new SteamGames(config.getSteamApiKey());
     this.steamStoreClient = new SteamStoreClient();
+    this.steamAppSearch = new SteamAppSearch(this.steamGames);
 
     String version = getClass().getPackage().getImplementationVersion();
     if (version == null) {
@@ -49,6 +51,7 @@ public class SteamGamesServer {
         .addTool(createGetGamesTool())
         .then(server.addTool(createGetRecentGamesTool()))
         .then(server.addTool(createGetStoreDetailsTool()))
+        .then(server.addTool(createSearchAppsTool()))
         .then(Mono.never());
   }
 
@@ -324,5 +327,106 @@ public class SteamGamesServer {
                           .toString())),
               true));
     }
+  }
+
+  private McpServerFeatures.AsyncToolRegistration createSearchAppsTool() {
+    var schema =
+        """
+            {
+              "type": "object",
+              "properties": {
+                "gameName": {
+                  "type": "string",
+                  "description": "The game name to search for (supports partial names and fuzzy matching)"
+                },
+                "limit": {
+                  "type": "integer",
+                  "description": "Maximum number of results to return (default: 5, max: 20)"
+                }
+              },
+              "required": ["gameName"]
+            }
+            """;
+
+    var tool =
+        new Tool(
+            config.getToolPrefix() + "search-apps",
+            """
+            Search for Steam applications by name using fuzzy matching. This tool helps find app IDs
+            when you know the game name but not the exact app ID. It uses fuzzy matching to handle
+            typos, partial names, and variations in game titles. Returns the top matching games with
+            their app IDs and similarity scores. The app list is cached for fast searching (refreshed
+            daily). Use this before calling get-store-details when you need to look up app IDs by name.
+            """,
+            schema);
+
+    return new McpServerFeatures.AsyncToolRegistration(tool, this::handleSearchApps);
+  }
+
+  private Mono<CallToolResult> handleSearchApps(Map<String, Object> args) {
+    return Mono.fromCallable(
+            () -> {
+              // Parse gameName (required)
+              String gameName = (String) args.get("gameName");
+              if (gameName == null || gameName.isBlank()) {
+                throw new IllegalArgumentException(
+                    "gameName parameter is required and cannot be empty");
+              }
+
+              // Parse limit (optional, default 5, max 20)
+              int limit = 5;
+              if (args.containsKey("limit")) {
+                Object limitObj = args.get("limit");
+                if (limitObj instanceof Integer) {
+                  limit = (Integer) limitObj;
+                } else if (limitObj instanceof Number) {
+                  limit = ((Number) limitObj).intValue();
+                }
+                // Cap at 20 to avoid overwhelming responses
+                limit = Math.min(Math.max(limit, 1), 20);
+              }
+
+              // Perform search
+              List<AppSearchResult> results = steamAppSearch.searchApps(gameName, limit);
+
+              // Build JSON response
+              JSONArray resultsArray = new JSONArray();
+              for (AppSearchResult result : results) {
+                resultsArray.put(result.toJson());
+              }
+
+              JSONObject response =
+                  new JSONObject()
+                      .put("query", gameName)
+                      .put("total_results", results.size())
+                      .put("results", resultsArray);
+
+              return new CallToolResult(List.of(new TextContent(response.toString())), false);
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .onErrorResume(
+            SteamApiException.class,
+            e ->
+                Mono.just(
+                    new CallToolResult(
+                        List.of(
+                            new TextContent(
+                                new JSONObject()
+                                    .put("error", "Failed to search Steam apps")
+                                    .put("message", e.getMessage())
+                                    .toString())),
+                        true)))
+        .onErrorResume(
+            Exception.class,
+            e ->
+                Mono.just(
+                    new CallToolResult(
+                        List.of(
+                            new TextContent(
+                                new JSONObject()
+                                    .put("error", "Unexpected error occurred")
+                                    .put("message", e.getMessage())
+                                    .toString())),
+                        true)));
   }
 }
