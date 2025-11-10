@@ -1,7 +1,9 @@
 package net.experimentalworks;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -23,11 +25,13 @@ public class SteamGamesServer {
 
   private final McpAsyncServer server;
   private final SteamGames steamGames;
+  private final SteamStoreClient steamStoreClient;
   private final SteamApiConfig config;
 
   public SteamGamesServer(ServerMcpTransport transport, SteamApiConfig config) {
     this.config = config;
     this.steamGames = new SteamGames(config.getSteamApiKey());
+    this.steamStoreClient = new SteamStoreClient();
 
     String version = getClass().getPackage().getImplementationVersion();
     if (version == null) {
@@ -44,6 +48,7 @@ public class SteamGamesServer {
     return server
         .addTool(createGetGamesTool())
         .then(server.addTool(createGetRecentGamesTool()))
+        .then(server.addTool(createGetStoreDetailsTool()))
         .then(Mono.never());
   }
 
@@ -174,5 +179,150 @@ public class SteamGamesServer {
                                     .put("message", e.getMessage())
                                     .toString())),
                         true)));
+  }
+
+  private McpServerFeatures.AsyncToolRegistration createGetStoreDetailsTool() {
+    var schema =
+        """
+            {
+              "type": "object",
+              "properties": {
+                "appIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Array of Steam App IDs to fetch store details for"
+                },
+                "countryCode": {
+                  "type": "string",
+                  "description": "Optional ISO 3166-1 country code for region-specific pricing (e.g., 'US', 'GB', 'DE')"
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Optional language code for localized descriptions (e.g., 'en', 'es', 'fr', 'de')"
+                }
+              },
+              "required": ["appIds"]
+            }
+            """;
+
+    var tool =
+        new Tool(
+            config.getToolPrefix() + "get-store-details",
+            """
+            Retrieve comprehensive store information for one or more Steam applications. This tool fetches
+            detailed data directly from the Steam Store API including game descriptions, pricing, platform
+            support, screenshots, videos, categories, genres, system requirements, metacritic scores,
+            developer/publisher information, release dates, and more. Optionally specify country code for
+            region-specific pricing and language code for localized content. The API does not require
+            authentication but is rate-limited to 200 requests per 5 minutes. Returns complete store
+            details for all requested app IDs.
+            """,
+            schema);
+
+    return new McpServerFeatures.AsyncToolRegistration(tool, this::handleGetStoreDetails);
+  }
+
+  private Mono<CallToolResult> handleGetStoreDetails(Map<String, Object> args) {
+    try {
+      // Parse appIds array
+      @SuppressWarnings("unchecked")
+      List<Object> appIdsRaw = (List<Object>) args.get("appIds");
+      if (appIdsRaw == null || appIdsRaw.isEmpty()) {
+        return Mono.just(
+            new CallToolResult(
+                List.of(
+                    new TextContent(
+                        new JSONObject()
+                            .put("error", "appIds parameter is required and cannot be empty")
+                            .toString())),
+                true));
+      }
+
+      List<Integer> appIds = new ArrayList<>();
+      for (Object obj : appIdsRaw) {
+        if (obj instanceof Integer) {
+          appIds.add((Integer) obj);
+        } else if (obj instanceof Number) {
+          appIds.add(((Number) obj).intValue());
+        } else {
+          return Mono.just(
+              new CallToolResult(
+                  List.of(
+                      new TextContent(
+                          new JSONObject()
+                              .put("error", "appIds must be an array of integers")
+                              .toString())),
+                  true));
+        }
+      }
+
+      // Parse optional parameters
+      Optional<String> countryCode =
+          args.containsKey("countryCode")
+              ? Optional.of((String) args.get("countryCode"))
+              : Optional.empty();
+
+      Optional<String> language =
+          args.containsKey("language")
+              ? Optional.of((String) args.get("language"))
+              : Optional.empty();
+
+      // Fetch store details
+      return steamStoreClient
+          .getStoreDetails(appIds, countryCode, language)
+          .map(
+              storeDetailsList -> {
+                JSONArray resultsArray = new JSONArray();
+                for (StoreDetails details : storeDetailsList) {
+                  resultsArray.put(details.toJson());
+                }
+
+                JSONObject response =
+                    new JSONObject()
+                        .put("description", "Steam Store details for requested applications")
+                        .put("total_apps", storeDetailsList.size())
+                        .put("store_details", resultsArray);
+
+                countryCode.ifPresent(cc -> response.put("country_code", cc));
+                language.ifPresent(lang -> response.put("language", lang));
+
+                return new CallToolResult(List.of(new TextContent(response.toString())), false);
+              })
+          .onErrorResume(
+              Exception.class,
+              e ->
+                  Mono.just(
+                      new CallToolResult(
+                          List.of(
+                              new TextContent(
+                                  new JSONObject()
+                                      .put("error", "Failed to fetch store details")
+                                      .put("message", e.getMessage())
+                                      .toString())),
+                          true)));
+
+    } catch (ClassCastException e) {
+      return Mono.just(
+          new CallToolResult(
+              List.of(
+                  new TextContent(
+                      new JSONObject()
+                          .put("error", "Invalid parameter types")
+                          .put("message", e.getMessage())
+                          .toString())),
+              true));
+    } catch (Exception e) {
+      return Mono.just(
+          new CallToolResult(
+              List.of(
+                  new TextContent(
+                      new JSONObject()
+                          .put("error", "Unexpected error occurred")
+                          .put("message", e.getMessage())
+                          .toString())),
+              true));
+    }
   }
 }
