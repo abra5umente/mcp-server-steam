@@ -74,7 +74,8 @@ class SteamGamesTest {
     HttpClient mockHttpClient = mock(HttpClient.class);
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
 
-    String jsonResponse = """
+    String jsonResponse =
+        """
         {"applist": {"apps": []}}
         """;
 
