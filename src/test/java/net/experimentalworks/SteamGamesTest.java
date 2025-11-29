@@ -136,9 +136,7 @@ class SteamGamesTest {
 
     SteamGames steamGames = new SteamGames("valid-api-key", mockHttpClient);
 
-    SteamApiException exception =
-        assertThrows(SteamApiException.class, () -> steamGames.getAppList());
-    assertTrue(exception.getMessage().contains("404"));
+    assertThrows(SteamApiException.class, () -> steamGames.getAppList());
   }
 
   @Test

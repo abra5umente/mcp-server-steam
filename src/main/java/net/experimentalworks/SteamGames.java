@@ -128,16 +128,14 @@ public class SteamGames {
 
       if (response.statusCode() != 200) {
         throw new SteamApiException(
-            SteamApiException.Cause.HTTP_ERROR,
-            null,
-            "HTTP " + response.statusCode() + " from Steam API");
+            SteamApiException.Cause.HTTP_ERROR, Integer.valueOf(response.statusCode()));
       }
 
       return parseAppListResponse(response.body());
     } catch (SteamApiException e) {
       throw e;
     } catch (Exception e) {
-      throw new SteamApiException(SteamApiException.Cause.HTTP_ERROR, e, e.getMessage());
+      throw new SteamApiException(SteamApiException.Cause.HTTP_ERROR, e);
     }
   }
 
