@@ -117,7 +117,11 @@ public class SteamGames {
   public List<AppInfo> getAppList() throws SteamApiException {
     try {
       HttpRequest request =
-          HttpRequest.newBuilder().uri(URI.create(GET_APP_LIST_URL)).GET().build();
+          HttpRequest.newBuilder()
+              .uri(URI.create(GET_APP_LIST_URL))
+              .timeout(REQUEST_TIMEOUT)
+              .GET()
+              .build();
 
       HttpResponse<String> response =
           httpClient.send(request, HttpResponse.BodyHandlers.ofString());
