@@ -160,4 +160,54 @@ class SteamAppSearchTest {
     assertFalse(results.isEmpty());
     assertEquals("Counter-Strike", results.get(0).getName());
   }
+
+  @Test
+  void testPreloadAppList() throws SteamApiException {
+    List<AppInfo> mockApps = List.of(new AppInfo(10, "Counter-Strike"));
+
+    when(mockSteamGames.getAppList()).thenReturn(mockApps);
+
+    // Initially cache should not be loaded
+    assertFalse(appSearch.isCacheLoaded());
+
+    // Preload the cache
+    appSearch.preloadAppList();
+
+    // Now cache should be loaded
+    assertTrue(appSearch.isCacheLoaded());
+
+    // Verify getAppList was called once
+    verify(mockSteamGames, times(1)).getAppList();
+  }
+
+  @Test
+  void testPreloadAppListHandlesException() throws SteamApiException {
+    when(mockSteamGames.getAppList()).thenThrow(new SteamApiException("API Error"));
+
+    // Should not throw, just log the error
+    assertDoesNotThrow(() -> appSearch.preloadAppList());
+
+    // Cache should not be loaded after failed preload
+    assertFalse(appSearch.isCacheLoaded());
+  }
+
+  @Test
+  void testPreloadAppListSkipsIfCacheLoaded() throws SteamApiException {
+    List<AppInfo> mockApps = List.of(new AppInfo(10, "Counter-Strike"));
+
+    when(mockSteamGames.getAppList()).thenReturn(mockApps);
+
+    // Preload twice
+    appSearch.preloadAppList();
+    appSearch.preloadAppList();
+
+    // Should only call getAppList once since cache is already loaded
+    verify(mockSteamGames, times(1)).getAppList();
+  }
+
+  @Test
+  void testIsCacheLoadedInitially() {
+    // Initially cache should not be loaded
+    assertFalse(appSearch.isCacheLoaded());
+  }
 }

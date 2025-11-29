@@ -23,16 +23,19 @@ import com.lukaspradel.steamapi.webapi.request.builders.SteamWebApiRequestFactor
 public class SteamGames {
 
   private static final String GET_APP_LIST_URL =
-      "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
+      "https://api.steampowered.com/IStoreService/GetAppList/v1/";
   private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
+  private static final int MAX_RESULTS_PER_PAGE = 50000;
 
   private final SteamWebApiClient client;
   private final HttpClient httpClient;
+  private final String apiKey;
 
   public SteamGames(String apiKey) {
     if (apiKey == null || apiKey.isBlank()) {
       throw new IllegalArgumentException("API key cannot be null or blank");
     }
+    this.apiKey = apiKey;
     this.client = new SteamWebApiClient.SteamWebApiClientBuilder(apiKey).build();
     this.httpClient =
         HttpClient.newBuilder()
@@ -51,6 +54,7 @@ public class SteamGames {
     if (apiKey == null || apiKey.isBlank()) {
       throw new IllegalArgumentException("API key cannot be null or blank");
     }
+    this.apiKey = apiKey;
     this.client = new SteamWebApiClient.SteamWebApiClientBuilder(apiKey).build();
     this.httpClient = httpClient;
   }
@@ -105,33 +109,41 @@ public class SteamGames {
   /**
    * Fetches the complete list of all Steam applications.
    *
-   * <p>This method retrieves all public Steam apps from the Steam Web API using a direct HTTP call
-   * to bypass the steam-web-api library which has issues with this endpoint. The list includes
-   * games, DLC, software, videos, and other Steam applications.
+   * <p>This method retrieves all public Steam apps from the Steam Web API using the IStoreService
+   * endpoint. The list includes games and DLC. Results are paginated (max 50k per request) and this
+   * method handles pagination automatically to fetch all apps.
    *
-   * <p>This endpoint is public and does not require an API key.
+   * <p>This endpoint requires an API key.
    *
    * @return list of AppInfo records containing app IDs and names
    * @throws SteamApiException if the API call fails
    */
   public List<AppInfo> getAppList() throws SteamApiException {
     try {
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create(GET_APP_LIST_URL))
-              .timeout(REQUEST_TIMEOUT)
-              .GET()
-              .build();
+      List<AppInfo> allApps = new ArrayList<>();
+      int lastAppId = 0;
+      boolean haveMoreResults = true;
 
-      HttpResponse<String> response =
-          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+      while (haveMoreResults) {
+        String url = buildAppListUrl(lastAppId);
+        HttpRequest request =
+            HttpRequest.newBuilder().uri(URI.create(url)).timeout(REQUEST_TIMEOUT).GET().build();
 
-      if (response.statusCode() != 200) {
-        throw new SteamApiException(
-            SteamApiException.Cause.HTTP_ERROR, Integer.valueOf(response.statusCode()));
+        HttpResponse<String> response =
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+          throw new SteamApiException(
+              SteamApiException.Cause.HTTP_ERROR, Integer.valueOf(response.statusCode()));
+        }
+
+        AppListPage page = parseAppListResponse(response.body());
+        allApps.addAll(page.apps());
+        haveMoreResults = page.haveMoreResults();
+        lastAppId = page.lastAppId();
       }
 
-      return parseAppListResponse(response.body());
+      return allApps;
     } catch (SteamApiException e) {
       throw e;
     } catch (Exception e) {
@@ -140,25 +152,47 @@ public class SteamGames {
   }
 
   /**
-   * Parses the JSON response from the GetAppList endpoint.
+   * Builds the URL for the IStoreService/GetAppList endpoint.
    *
-   * <p>Response format: { "applist": { "apps": [ {"appid": 10, "name": "Counter-Strike"}, ... ] } }
+   * @param lastAppId the last app ID from the previous page (0 for first request)
+   * @return the complete URL with query parameters
+   */
+  private String buildAppListUrl(int lastAppId) {
+    StringBuilder url = new StringBuilder(GET_APP_LIST_URL);
+    url.append("?key=").append(apiKey);
+    url.append("&max_results=").append(MAX_RESULTS_PER_PAGE);
+    url.append("&include_games=true");
+    url.append("&include_dlc=true");
+    if (lastAppId > 0) {
+      url.append("&last_appid=").append(lastAppId);
+    }
+    return url.toString();
+  }
+
+  /**
+   * Parses the JSON response from the IStoreService/GetAppList endpoint.
+   *
+   * <p>Response format: { "response": { "apps": [ {"appid": 10, "name": "Counter-Strike",
+   * "last_modified": 123, "price_change_number": 456}, ... ], "have_more_results": true,
+   * "last_appid": 12345 } }
    *
    * @param responseBody the JSON response body
-   * @return list of AppInfo records
+   * @return AppListPage containing apps and pagination info
    */
-  private List<AppInfo> parseAppListResponse(String responseBody) {
+  private AppListPage parseAppListResponse(String responseBody) {
     JSONObject root = new JSONObject(responseBody);
-    JSONObject applist = root.optJSONObject("applist");
+    JSONObject response = root.optJSONObject("response");
 
-    if (applist == null) {
-      return List.of();
+    if (response == null) {
+      return new AppListPage(List.of(), false, 0);
     }
 
-    JSONArray apps = applist.optJSONArray("apps");
+    JSONArray apps = response.optJSONArray("apps");
+    boolean haveMoreResults = response.optBoolean("have_more_results", false);
+    int lastAppId = response.optInt("last_appid", 0);
 
     if (apps == null) {
-      return List.of();
+      return new AppListPage(List.of(), false, 0);
     }
 
     List<AppInfo> result = new ArrayList<>();
@@ -172,6 +206,9 @@ public class SteamGames {
       }
     }
 
-    return result;
+    return new AppListPage(result, haveMoreResults, lastAppId);
   }
+
+  /** Internal record to hold pagination results from the app list endpoint. */
+  private record AppListPage(List<AppInfo> apps, boolean haveMoreResults, int lastAppId) {}
 }

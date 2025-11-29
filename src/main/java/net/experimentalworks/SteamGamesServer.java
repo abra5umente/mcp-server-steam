@@ -47,6 +47,12 @@ public class SteamGamesServer {
   }
 
   public Mono<Void> run() {
+    // Start background preloading of app list immediately (fire and forget)
+    // This ensures the cache is warm before any search requests
+    Mono.fromRunnable(() -> steamAppSearch.preloadAppList())
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe();
+
     return server
         .addTool(createGetGamesTool())
         .then(server.addTool(createGetRecentGamesTool()))

@@ -153,4 +153,34 @@ public class SteamAppSearch {
         "Cache loaded: %d apps, last fetch: %s, expired: %s",
         cachedAppList.size(), lastFetch, isCacheExpired());
   }
+
+  /**
+   * Preloads the app list cache synchronously.
+   *
+   * <p>This method can be called during server startup to warm the cache before any user requests.
+   * It's designed to be called from a background thread (e.g., via Schedulers.boundedElastic()).
+   * Errors are logged but not thrown since this is an optimization.
+   */
+  public void preloadAppList() {
+    try {
+      if (cachedAppList == null || isCacheExpired()) {
+        refreshCache();
+        System.err.println(
+            "[SteamAppSearch] Cache preloaded with " + cachedAppList.size() + " apps");
+      } else {
+        System.err.println("[SteamAppSearch] Cache already loaded, skipping preload");
+      }
+    } catch (Exception e) {
+      System.err.println("[SteamAppSearch] Failed to preload cache: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Checks if the cache is currently loaded.
+   *
+   * @return true if cache is loaded and not expired
+   */
+  public boolean isCacheLoaded() {
+    return cachedAppList != null && !isCacheExpired();
+  }
 }
